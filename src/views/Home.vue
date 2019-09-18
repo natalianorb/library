@@ -1,32 +1,39 @@
 <template>
   <div class="home">
-    <div class="home__search-panel">
-      <button :class="{ home__starred: true, hidden: isFocused }" type="button">
-        <span class="home__starred-tooltip">Избранное</span>
-      </button>
-      <SearchSelect
-        :class="{ focused: isFocused }"
-        :options="selectOptions"
-        :required="false"
-        @blur="isFocused = false"
-        @error="error = $event"
-        @focus="isFocused = true"
-        @input="debouncedSuggestQuery"
-        @change="onChange"
-        @select="onSelect"
-        placeholder="Поиск"
-        searching-prop="title"
-        v-model="searchString"
-      >
-        <template v-slot:default="slotProps">
-          <div>
-            {{ slotProps.option.title }}
-          </div>
-        </template>
-      </SearchSelect>
-    </div>
-    <div class="home__results" ref="searchResults">
-      <VolumeCard v-for="volume in books" :key="volume.id" :volume="volume" />
+    <div class="home__container">
+      <div class="home__book-view">
+        <h1 class="home__title">БИБЛИОТЕКА</h1>
+      </div>
+      <div :class="['home__search-view', { 'has-results': books.length }]">
+        <div class="home__search-panel">
+          <button :class="{ home__starred: true, hidden: isFocused }" type="button">
+            <span class="home__starred-tooltip">Избранное</span>
+          </button>
+          <SearchSelect
+            :class="{ focused: isFocused }"
+            :options="selectOptions"
+            :required="false"
+            @blur="isFocused = false"
+            @error="error = $event"
+            @focus="isFocused = true"
+            @input="debouncedSuggestQuery"
+            @change="onChange"
+            @select="onSelect"
+            placeholder="Поиск"
+            searching-prop="title"
+            v-model="searchString"
+          >
+            <template v-slot:default="slotProps">
+              <div>
+                {{ slotProps.option.title }}
+              </div>
+            </template>
+          </SearchSelect>
+        </div>
+        <div class="home__results" ref="searchResults">
+          <VolumeCard v-for="volume in books" :key="volume.id" :volume="volume" />
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -92,7 +99,7 @@ export default {
       const { bottom } = document.body.getBoundingClientRect();
 
       if (bottom <= 1.2 * viewportHeight) {
-        this.startIndex += 10;
+        this.startIndex += 4;
         this.getBooks();
       }
     },
@@ -112,9 +119,9 @@ export default {
       // const url = `https://www.googleapis.com/books/v1/volumes?q=${this.searchString}&fields=kind,items(volumeInfo/title,volumeInfo/averageRating,volumeInfo/description,volumeInfo/imageLinks)`
       const url = `https://www.googleapis.com/books/v1/volumes?q=${this.searchString}&startIndex=${
         this.startIndex
-      }`;
+      }&maxResults=4`;
 
-      if (url === this.lastSearchParams) {
+      if (!this.searchString || url === this.lastSearchParams) {
         return;
       }
       this.lastSearchParams = url;
@@ -122,7 +129,7 @@ export default {
         .get(
           `https://www.googleapis.com/books/v1/volumes?q=${this.searchString}&startIndex=${
             this.startIndex
-          }`,
+          }&maxResults=4`,
         )
         .then(({ data }) => {
           this.books.push(...data.items);
@@ -139,24 +146,81 @@ export default {
 .bordered-shadow-box() {
   background-color: #fff;
   border: 1px solid #7d8888;
-  box-sizing: border-box;
   box-shadow: 0 16px 17px rgba(0, 0, 0, 0.2);
   border-radius: 4px;
 }
 
 .home {
-  padding: 24px 20px;
+  position: relative;
   @media screen and (min-width: @laptop) {
-    padding: 64px;
+    background-size: contain;
+  }
+  @media screen and (min-width: @desktop) {
+    min-height: 0;
+  }
+
+  &__container {
+    @media screen and (min-width: @laptop) {
+      max-width: 650px;
+      margin: 0 auto;
+    }
+    @media screen and (min-width: @desktop) {
+      max-width: 100%;
+      display: flex;
+    }
+  }
+
+  &__book-view {
+    @media screen and (min-width: @desktop) {
+      min-width: 54%;
+      max-height: 100vh;
+      background: url('../assets/images/books.png') left top/690px 100% no-repeat #ddd;
+    }
+  }
+
+  &__title {
+    position: absolute;
+    top: 75%;
+    width: 100%;
+    left: 0;
+    margin: 0;
+    font-weight: 900;
+    font-size: 33px;
+    line-height: 37px;
+    text-align: center;
+    color: #4B5959;
+    @media screen and (min-width: @desktop) {
+      width: auto;
+      left: 273px;
+      top: 600px;
+      font-size: 59px;
+    }
+  }
+
+  &__search-view {
+    min-height: 100vh;
+    padding: 24px 16px 16px 16px;
+    background: url('../assets/images/books.png') center top/cover no-repeat #fff;
+    @media screen and (min-width: @laptop) {
+      padding: 64px 80px 64px 64px;
+    }
+    @media screen and (min-width: @desktop) {
+      width: 46%;
+      background: #fff;
+    }
+    &.has-results {
+      background: #fff;
+    }
   }
 
   &__search-panel {
     display: flex;
+    width: 100%;
   }
 
   &__starred {
     position: relative;
-    width: @starred-button-height;
+    min-width: @starred-button-height;
     height: @starred-button-height;
     margin-right: 12px;
     background: url("../assets/images/heart-dark.svg") center no-repeat;
@@ -204,6 +268,9 @@ export default {
 
   &__results {
     padding-top: 18px;
+    @media screen and (min-width: @desktop) {
+      padding-top: 34px;
+    }
   }
 
   .hidden {

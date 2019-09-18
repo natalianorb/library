@@ -1,7 +1,18 @@
 <template>
   <div v-if="volume.volumeInfo" class="volume-card" @click="$emit('click')">
-    <div v-if="volume.volumeInfo.imageLinks" class="volume-card__left">
-      <img :src="volume.volumeInfo.imageLinks.thumbnail" alt="" class="volume-card__img">
+    <div class="volume-card__left">
+      <img
+        v-if="volume.volumeInfo.imageLinks"
+        :src="volume.volumeInfo.imageLinks.thumbnail"
+        :alt="volume.volumeInfo.title"
+        class="volume-card__img"
+      >
+      <img
+        v-else
+        src="../assets/images/no-cover.svg"
+        :alt="volume.volumeInfo.title"
+        class="volume-card__img"
+      >
     </div>
     <div class="volume-card__right">
       <div class="volume-card__rate">
@@ -20,8 +31,8 @@
       <div class="volume-card__title">
         {{ volume.volumeInfo.title }}
       </div>
-      <div class="volume-card__description">
-        {{ volume.volumeInfo.description }}
+      <div :class="['volume-card__description', { 'empty': !volume.volumeInfo.description }]">
+        {{ volume.volumeInfo.description ? volume.volumeInfo.description : 'Нет описания' }}
       </div>
     </div>
 
@@ -63,6 +74,9 @@ export default {
       max-width: 75px;
       max-height: 100px;
     }
+    &__right {
+      overflow: hidden;
+    }
     &__rate {
       margin-bottom: 6px;
     }
@@ -71,6 +85,9 @@ export default {
       font-weight: 500;
       font-size: 17px;
       line-height: 24px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
       color: #000000;
     }
     &__description {
@@ -81,6 +98,9 @@ export default {
       line-height: 17px;
       @media screen and (min-width: @laptop) {
         height: 54px;
+      }
+      &.empty {
+        color: #4c4c4c;
       }
     }
     .rating {

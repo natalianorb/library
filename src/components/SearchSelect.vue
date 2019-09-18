@@ -1,5 +1,5 @@
 <template>
-  <div :class="['search-select', { open: isOpen && hasSuggesstions }]">
+  <div :class="['search-select', { open: isOpen && hasSuggesstions, 'has-text': searchingValue }]">
     <label>
       <span>{{ label }}</span>
       <input
@@ -13,7 +13,7 @@
       />
     </label>
     <button
-      :class="{ 'search-select__clear': true, visible: searchingValue }"
+      class="search-select__clear"
       @click="onClear"
       type="button">
     </button>
@@ -178,8 +178,18 @@ export default {
 </script>
 
 <style lang="less">
+  @import "../assets/styles/common";
+
   .search-select {
     position: relative;
+    &.has-text {
+      .search-select__input {
+        background-image: none;
+      }
+      .search-select__clear {
+        display: block;
+      }
+    }
 
     &__input {
       width: 100%;
@@ -187,6 +197,10 @@ export default {
       padding: 12px 42px 12px 12px;
       border: none;
       font-size: 17px;
+      background: url('../assets/images/search.svg') 97% center no-repeat transparent;
+      @media screen and (min-width: @desktop) {
+        padding-left: 16px;
+      }
     }
     &__clear {
       position: absolute;
@@ -197,9 +211,9 @@ export default {
       height: 20px;
       background: url('../assets/images/close.svg') center no-repeat transparent;
       border: none;
-
-      &.visible {
-        display: block;
+      @media screen and (min-width: @desktop) {
+        top: 12px;
+        right: 12px;
       }
     }
     &__dropdown {
