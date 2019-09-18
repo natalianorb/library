@@ -16,17 +16,7 @@
     </div>
     <div class="volume-card__right">
       <div class="volume-card__rate">
-        <div class="rating">
-          <div
-            v-for="i in 5"
-            :key="i"
-            class="rating__star"
-            :class="{
-              gold: i <= volume.volumeInfo.averageRating,
-              half: i < volume.volumeInfo.averageRating && (i + 1) > volume.volumeInfo.averageRating
-            }"
-          ></div>
-        </div>
+        <Rating :rating="volume.volumeInfo.averageRating"/>
       </div>
       <div class="volume-card__title">
         {{ volume.volumeInfo.title }}
@@ -40,8 +30,11 @@
 </template>
 
 <script>
+import Rating from '@/components/Rating.vue';
+
 export default {
   name: 'VolumeCard',
+  components: { Rating },
   props: {
     volume: {
       type: Object,
@@ -101,25 +94,6 @@ export default {
       }
       &.empty {
         color: #4c4c4c;
-      }
-    }
-    .rating {
-      position: relative;
-      z-index: 1;
-      display: flex;
-      &__star {
-        position: relative;
-        z-index: 2;
-        width: 14px;
-        height: 14px;
-        margin: 0 1px;
-        background: url('../assets/images/star.svg') center/cover no-repeat;
-        &.gold {
-          background: url('../assets/images/star-gold.svg') center/cover no-repeat;
-        }
-        &.half {
-          background: url('../assets/images/half-star.svg') center/cover no-repeat;
-        }
       }
     }
   }
