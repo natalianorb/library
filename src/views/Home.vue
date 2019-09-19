@@ -107,10 +107,12 @@ export default {
     ...mapMutations(['setSelectedBook']),
     ...mapActions(['loadAndSetSelectedBook']),
     onChange(val) {
+      this.searchString = val;
       this.getBooks(val);
     },
     onSelect(option) {
-      this.getBooks(option.title);
+      this.searchString = option.title;
+      this.getBooks();
     },
     onScroll() {
       if (this.$route.name === 'home' && this.isMobile) {
