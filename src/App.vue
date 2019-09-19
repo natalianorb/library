@@ -32,6 +32,7 @@ input {
 
 button {
   padding: 0;
+  border: none;
   outline: none;
   color: #000000;
   cursor: pointer;

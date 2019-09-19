@@ -1,10 +1,11 @@
 <template>
-  <div class="home">
+  <div :class="['home', { 'has-selected': selectedBook, 'has-results': books.length }]">
     <div class="home__container">
       <div class="home__book-view">
         <h1 class="home__title">БИБЛИОТЕКА</h1>
+        <Book v-if="selectedBook" :volume="selectedBook" @goBack="setSelectedBook(null)"/>
       </div>
-      <div :class="['home__search-view', { 'has-results': books.length }]">
+      <div class="home__search-view">
         <div class="home__search-panel">
           <button :class="{ home__starred: true, hidden: isFocused }" type="button">
             <span class="home__starred-tooltip">Избранное</span>
@@ -30,8 +31,21 @@
             </template>
           </SearchSelect>
         </div>
-        <div class="home__results" ref="searchResults">
-          <VolumeCard v-for="volume in books" :key="volume.id" :volume="volume" />
+        <div v-if="isMobile" class="home__results" ref="searchResults" @scroll="debouncedOnScroll">
+          <VolumeCard
+            v-for="volume in books"
+            :key="volume.id"
+            :volume="volume"
+            @click="showBook(volume)"
+          />
+        </div>
+        <div v-else class="home__results" ref="searchResults">
+          <VolumeCard
+            v-for="volume in books"
+            :key="volume.id"
+            :volume="volume"
+            @click="showBook(volume)"
+          />
         </div>
       </div>
     </div>
@@ -39,14 +53,17 @@
 </template>
 
 <script>
+import { mapState, mapMutations, mapActions } from 'vuex';
 import axios from 'axios';
 import { debounce } from 'lodash';
+import Book from '@/components/Book.vue';
 import SearchSelect from '@/components/SearchSelect.vue';
 import VolumeCard from '@/components/VolumeCard.vue';
 
 export default {
   name: 'home',
   components: {
+    Book,
     SearchSelect,
     VolumeCard,
   },
@@ -62,7 +79,15 @@ export default {
       listElement: null,
       lastSearchParams: '',
       viewportWidth: 0,
+      maxResults: 5,
+      threshold: 200,
     };
+  },
+  computed: {
+    ...mapState(['selectedBook']),
+    isMobile() {
+      return document.documentElement.clientWidth < 1280;
+    },
   },
   created() {
     window.setQueryOptions = (res) => {
@@ -77,17 +102,10 @@ export default {
   },
   mounted() {
     this.listElement = this.$el && this.$el.querySelector('.home__results');
-    this.viewportWidth = document.documentElement.clientWidth;
-    if (this.viewportWidth < 1024) {
-      window.addEventListener('scroll', this.debouncedOnScroll);
-    }
-  },
-  beforeDestroy() {
-    if (this.viewportWidth < 1024) {
-      window.removeEventListener('scroll', this.debouncedOnScroll);
-    }
   },
   methods: {
+    ...mapMutations(['setSelectedBook']),
+    ...mapActions(['loadAndSetSelectedBook']),
     onChange(val) {
       this.getBooks(val);
     },
@@ -95,12 +113,13 @@ export default {
       this.getBooks(option.title);
     },
     onScroll() {
-      const viewportHeight = document.documentElement.clientHeight;
-      const { bottom } = document.body.getBoundingClientRect();
+      if (this.$route.name === 'home' && this.isMobile) {
+        const element = this.listElement;
 
-      if (bottom <= 1.2 * viewportHeight) {
-        this.startIndex += 4;
-        this.getBooks();
+        if (element.scrollHeight - element.scrollTop - this.threshold <= element.clientHeight) {
+          this.startIndex += this.maxResults;
+          this.getBooks();
+        }
       }
     },
     suggestQuery(query) {
@@ -117,23 +136,22 @@ export default {
     },
     getBooks() {
       // const url = `https://www.googleapis.com/books/v1/volumes?q=${this.searchString}&fields=kind,items(volumeInfo/title,volumeInfo/averageRating,volumeInfo/description,volumeInfo/imageLinks)`
-      const url = `https://www.googleapis.com/books/v1/volumes?q=${this.searchString}&startIndex=${
+      const url = `https://www.googleapis.com/books/v1/volumes?key=AIzaSyAYqnQuRmbz4Cs5gdGpx_pr4tKd5y8WOTk&q=${this.searchString}&startIndex=${
         this.startIndex
-      }&maxResults=4`;
+      }&maxResults=${this.maxResults}`;
 
       if (!this.searchString || url === this.lastSearchParams) {
         return;
       }
       this.lastSearchParams = url;
       axios
-        .get(
-          `https://www.googleapis.com/books/v1/volumes?q=${this.searchString}&startIndex=${
-            this.startIndex
-          }&maxResults=4`,
-        )
+        .get(url)
         .then(({ data }) => {
           this.books.push(...data.items);
         });
+    },
+    showBook(volume) {
+      this.loadAndSetSelectedBook(volume);
     },
   },
 };
@@ -158,6 +176,31 @@ export default {
   @media screen and (min-width: @desktop) {
     min-height: 0;
   }
+  &.has-results {
+    .home__search-view {
+      background: #fff;
+    }
+    .home__title {
+      @media screen and (max-width: @desktop - 1px) {
+        display: none;
+      }
+    }
+  }
+  &.has-selected {
+    .home__title {
+      display: none;
+    }
+    .home__book-view {
+      @media screen and (min-width: @desktop) {
+        background: #F3F3F3;
+      }
+    }
+    .home__search-view  {
+      @media screen and (max-width: @desktop - 1px) {
+        display: none;
+      }
+    }
+  }
 
   &__container {
     @media screen and (min-width: @laptop) {
@@ -167,13 +210,13 @@ export default {
     @media screen and (min-width: @desktop) {
       max-width: 100%;
       display: flex;
+      align-items: stretch;
     }
   }
 
   &__book-view {
     @media screen and (min-width: @desktop) {
       min-width: 54%;
-      max-height: 100vh;
       background: url('../assets/images/books.png') left top/690px 100% no-repeat #ddd;
     }
   }
@@ -206,9 +249,6 @@ export default {
     }
     @media screen and (min-width: @desktop) {
       width: 46%;
-      background: #fff;
-    }
-    &.has-results {
       background: #fff;
     }
   }
@@ -267,9 +307,15 @@ export default {
   }
 
   &__results {
-    padding-top: 18px;
+    position: sticky;
+    top: 68px;
+    max-height: 90vh;
+    overflow-y: auto;
+    margin-top: 18px;
     @media screen and (min-width: @desktop) {
-      padding-top: 34px;
+      position: static;
+      max-height: calc(100vh - 370px);
+      margin-top: 34px;
     }
   }
 
