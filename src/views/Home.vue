@@ -3,11 +3,22 @@
     <div class="home__container">
       <div class="home__book-view">
         <h1 class="home__title">БИБЛИОТЕКА</h1>
-        <Book v-if="selectedBook" :volume="selectedBook" @goBack="setSelectedBook(null)"/>
+        <Book
+          v-if="selectedBook"
+          :volume="selectedBook"
+          :is-in-favourites="isSelectedInFavourites"
+          @goBack="setSelectedBook(null)"
+          @toggleMark="toggleMark"
+          @openFav="openFav"
+        />
       </div>
       <div class="home__search-view">
         <div class="home__search-panel">
-          <button :class="{ home__starred: true, hidden: isFocused }" type="button">
+          <button
+            :class="{ home__starred: true, hidden: isFocused }"
+            type="button"
+            @click="openFav"
+          >
             <span class="home__starred-tooltip">Избранное</span>
           </button>
           <SearchSelect
@@ -53,7 +64,9 @@
 </template>
 
 <script>
-import { mapState, mapMutations, mapActions } from 'vuex';
+import {
+  mapState, mapGetters, mapMutations, mapActions,
+} from 'vuex';
 import axios from 'axios';
 import { debounce } from 'lodash';
 import Book from '@/components/Book.vue';
@@ -84,7 +97,8 @@ export default {
     };
   },
   computed: {
-    ...mapState(['selectedBook']),
+    ...mapState(['selectedBook', 'userId', 'favourites']),
+    ...mapGetters(['isSelectedInFavourites']),
     isMobile() {
       return document.documentElement.clientWidth < 1280;
     },
@@ -102,17 +116,18 @@ export default {
   },
   mounted() {
     this.listElement = this.$el && this.$el.querySelector('.home__results');
+    this.getUserFavourites();
   },
   methods: {
-    ...mapMutations(['setSelectedBook']),
-    ...mapActions(['loadAndSetSelectedBook']),
+    ...mapMutations(['setUserId', 'setSelectedBook']),
+    ...mapActions(['loadAndSetSelectedBook', 'loadFavorites', 'addToFavourites', 'removeFromFavourites']),
     onChange(val) {
       this.searchString = val;
-      this.getBooks(val);
+      this.findBooks(val);
     },
     onSelect(option) {
       this.searchString = option.title;
-      this.getBooks();
+      this.findBooks();
     },
     onScroll() {
       if (this.$route.name === 'home' && this.isMobile) {
@@ -120,7 +135,7 @@ export default {
 
         if (element.scrollHeight - element.scrollTop - this.threshold <= element.clientHeight) {
           this.startIndex += this.maxResults;
-          this.getBooks();
+          this.findBooks();
         }
       }
     },
@@ -136,7 +151,7 @@ export default {
       /* this attaches the script to the body of the page */
       document.body.appendChild(this.script);
     },
-    getBooks() {
+    findBooks() {
       // const url = `https://www.googleapis.com/books/v1/volumes?q=${this.searchString}&fields=kind,items(volumeInfo/title,volumeInfo/averageRating,volumeInfo/description,volumeInfo/imageLinks)`
       const url = `https://www.googleapis.com/books/v1/volumes?key=AIzaSyAYqnQuRmbz4Cs5gdGpx_pr4tKd5y8WOTk&q=${this.searchString}&startIndex=${
         this.startIndex
@@ -154,6 +169,47 @@ export default {
     },
     showBook(volume) {
       this.loadAndSetSelectedBook(volume);
+    },
+    toggleMark() {
+      if (this.isSelectedInFavourites) {
+        this.removeFromFavourites(this.selectedBook);
+      } else {
+        this.addToFavourites(this.selectedBook);
+      }
+    },
+    getUserFavourites() {
+      const { gapi, GoogleAuth, GOOGLE_O_AUTH_SCOPE } = window;
+
+      if (!gapi || !GoogleAuth) {
+        setTimeout(this.getUserFavourites, 2000);
+        return;
+      }
+
+      gapi.client.request({
+        method: 'GET',
+        path: '/books/v1/mylibrary/bookshelves',
+        scope: GOOGLE_O_AUTH_SCOPE,
+      })
+        .then(({ result }) => {
+          const { items } = result;
+          const shelf = (items && items[0]) || null;
+
+          if (shelf) {
+            const userId = (shelf.selfLink && shelf.selfLink.split('/')[6]) || 0;
+            this.setUserId(userId);
+          }
+          return true;
+        })
+        .catch(({ result }) => {
+          console.error(result && result.error);
+        })
+        .then(this.loadFavorites)
+        .catch((res) => {
+          console.error(res);
+        });
+    },
+    openFav() {
+      this.books = this.favourites;
     },
   },
 };

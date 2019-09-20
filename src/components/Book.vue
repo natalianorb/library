@@ -22,7 +22,7 @@
             :key="author"
           >
           <span class="book__author">{{ author }}</span>
-          {{(i < (volume.volumeInfo.authors.length - 1))? ',': '' }}
+          {{ getComma(i) }}
       </span>
         </div>
         <div v-if="volume.volumeInfo.publishedDate" class="book__year">
@@ -35,8 +35,14 @@
           <span class="book__value">{{ volume.volumeInfo.averageRating }}</span>
         </div>
         <div class="book__buttons">
-          <!--<button v-if="starred" type="button" class="book__add-mark">В избранное</button>-->
-          <button type="button" class="book__add-mark">В избранное</button>
+          <div v-if="isInFavourites" class="book__two-buttons">
+            <button type="button" class="book__add-mark favourite" @click="$emit('toggleMark')">
+            </button>
+            <button type="button" class="book__open-fav" @click="$emit('openFav')">Перейти</button>
+          </div>
+          <button v-else type="button" class="book__add-mark" @click="$emit('toggleMark')">
+            В избранное
+          </button>
           <button type="button" class="book__share">Поделиться</button>
         </div>
       </div>
@@ -64,6 +70,10 @@ export default {
         return {};
       },
     },
+    isInFavourites: {
+      type: Boolean,
+      default: false,
+    },
   },
   computed: {
     imageSrc() {
@@ -73,6 +83,18 @@ export default {
       const { imageLinks } = this.volume && this.volume.volumeInfo;
 
       return imageLinks.medium ? imageLinks.medium : imageLinks.thumbnail;
+    },
+  },
+  data() {
+    return {
+      googleUser: {},
+      userId: '',
+      shelves: [],
+    };
+  },
+  methods: {
+    getComma(i) {
+      return i < (this.volume.volumeInfo.authors.length - 1) ? ',' : '';
     },
   },
 };
@@ -149,12 +171,24 @@ export default {
       margin-top: 24px;
       display: flex;
     }
+    &__two-buttons {
+      display: flex;
+      align-items: center;
+    }
     &__add-mark {
       height: 20px;
       padding-left: 28px;
       font-size: 13px;
       color: #C7CAD2;
       background: url('../assets/images/heart.svg') left center no-repeat transparent;
+      &.favourite {
+        background: url('../assets/images/heart-red.svg') left center no-repeat transparent;
+      }
+    }
+    &__open-fav {
+      font-size: 13px;
+      color: #C7CAD2;
+      background-color: transparent;
     }
     &__share {
       margin-left: 52px;
