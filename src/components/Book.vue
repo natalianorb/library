@@ -50,8 +50,10 @@
 
     <div class="book__descr">
       <div class="book__descr-title">Отрывок книги </div>
-      <div class="book__descr-text">
-        {{ volume.volumeInfo.description ? volume.volumeInfo.description : 'Нет описания' }}
+      <div v-if="volume.volumeInfo.description" v-html="volume.volumeInfo.description" class="book__descr-text">
+      </div>
+      <div v-else class="book__descr-text">
+        Нет описания
       </div>
     </div>
   </div>
@@ -77,11 +79,11 @@ export default {
   },
   computed: {
     imageSrc() {
-      if (!this.volume || !this.volume.volumeInfo) {
-        return '../assets/images/no-cover.svg';
-      }
       const { imageLinks } = this.volume && this.volume.volumeInfo;
 
+      if (!imageLinks) {
+        return '../assets/images/no-cover.svg';
+      }
       return imageLinks.medium ? imageLinks.medium : imageLinks.thumbnail;
     },
   },
@@ -112,11 +114,18 @@ export default {
       padding: 64px 40px 40px 40px;
     }
     &__header {
-      position: absolute;
+      position: fixed;
+      width: 100%;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      padding-left: 20px;
+      background-color: rgba(0,0,0,0.6);
     }
     &__back {
-      width: 16px;
-      height: 16px;
+      width: 24px;
+      height: 24px;
+      background: url('../assets/images/back.svg') center no-repeat transparent;
     }
     &__top {
       @media screen and (min-width: @desktop) {

@@ -9,15 +9,19 @@
           :is-in-favourites="isSelectedInFavourites"
           @goBack="setSelectedBook(null)"
           @toggleMark="toggleMark"
-          @openFav="openFav"
+          @openFav="showFavourites"
         />
       </div>
       <div class="home__search-view">
-        <div class="home__search-panel">
+        <div v-if="books === favourites" class="home__fav">
+          <button type="button" class="home__back" @click="showSearch"></button>
+          <div class="home__fav-text">Избранное</div>
+        </div>
+        <div v-else class="home__search-panel">
           <button
             :class="{ home__starred: true, hidden: isFocused }"
             type="button"
-            @click="openFav"
+            @click="showFavourites"
           >
             <span class="home__starred-tooltip">Избранное</span>
           </button>
@@ -25,15 +29,15 @@
             :class="{ focused: isFocused }"
             :options="selectOptions"
             :required="false"
-            @blur="isFocused = false"
+            v-model="searchString"
+            @blur="onBlur"
             @error="error = $event"
             @focus="isFocused = true"
             @input="debouncedSuggestQuery"
             @change="onChange"
-            @select="onSelect"
+            @select="onChange($event && $event.title)"
             placeholder="Поиск"
             searching-prop="title"
-            v-model="searchString"
           >
             <template v-slot:default="slotProps">
               <div>
@@ -58,6 +62,20 @@
             @click="showBook(volume)"
           />
         </div>
+        <paginate
+          v-show="!isMobile && books.length"
+          v-model="page"
+          :page-count="totalPages"
+          :page-range="7"
+          :click-handler="getPage"
+          prev-text=""
+          next-text=""
+          container-class="pagination"
+          page-class="pagination__page"
+          prev-class="pagination__page prev"
+          next-class="pagination__page next"
+        >
+        </paginate>
       </div>
     </div>
   </div>
@@ -69,6 +87,7 @@ import {
 } from 'vuex';
 import axios from 'axios';
 import { debounce } from 'lodash';
+import Paginate from 'vuejs-paginate';
 import Book from '@/components/Book.vue';
 import SearchSelect from '@/components/SearchSelect.vue';
 import VolumeCard from '@/components/VolumeCard.vue';
@@ -79,6 +98,7 @@ export default {
     Book,
     SearchSelect,
     VolumeCard,
+    Paginate,
   },
   data() {
     return {
@@ -91,9 +111,13 @@ export default {
       startIndex: 0,
       listElement: null,
       lastSearchParams: '',
+      lastSearchedString: '',
       viewportWidth: 0,
       maxResults: 5,
       threshold: 200,
+      page: 0,
+      totalPages: 0,
+      lastBooks: [],
     };
   },
   computed: {
@@ -121,16 +145,23 @@ export default {
   methods: {
     ...mapMutations(['setUserId', 'setSelectedBook']),
     ...mapActions(['loadAndSetSelectedBook', 'loadFavorites', 'addToFavourites', 'removeFromFavourites']),
-    onChange(val) {
-      this.searchString = val;
-      this.findBooks(val);
-    },
-    onSelect(option) {
-      this.searchString = option.title;
+    onBlur() {
+      this.isFocused = false;
       this.findBooks();
     },
+    onChange(val) {
+      const str = (val && val.trim()) || '';
+      if (!str) {
+        return;
+      }
+      if (val !== this.searchString) {
+        this.searchString = str;
+        this.books = [];
+        this.findBooks();
+      }
+    },
     onScroll() {
-      if (this.$route.name === 'home' && this.isMobile) {
+      if (this.$route.name === 'home' && this.isMobile && (this.books !== this.favourites)) {
         const element = this.listElement;
 
         if (element.scrollHeight - element.scrollTop - this.threshold <= element.clientHeight) {
@@ -140,7 +171,10 @@ export default {
       }
     },
     suggestQuery(query) {
-      if (!query) {
+      const str = (query && query.trim()) || '';
+
+      this.searchString = str;
+      if (!str) {
         return;
       }
       this.script = document.createElement('script');
@@ -152,20 +186,31 @@ export default {
       document.body.appendChild(this.script);
     },
     findBooks() {
-      // const url = `https://www.googleapis.com/books/v1/volumes?q=${this.searchString}&fields=kind,items(volumeInfo/title,volumeInfo/averageRating,volumeInfo/description,volumeInfo/imageLinks)`
-      const url = `https://www.googleapis.com/books/v1/volumes?key=AIzaSyAYqnQuRmbz4Cs5gdGpx_pr4tKd5y8WOTk&q=${this.searchString}&startIndex=${
+      const url = `https://www.googleapis.com/books/v1/volumes?key=AIzaSyAYqnQuRmbz4Cs5gdGpx_pr4tKd5y8WOTk&q=${
+        this.searchString
+      }&startIndex=${
         this.startIndex
       }&maxResults=${this.maxResults}`;
 
       if (!this.searchString || url === this.lastSearchParams) {
         return;
       }
+      if (this.lastSearchedString !== this.searchString) {
+        this.lastSearchedString = this.searchString;
+        this.books = [];
+      }
       this.lastSearchParams = url;
       axios
         .get(url)
-        .then(({ data }) => {
+        .then((res) => {
+          const { data } = res;
+          this.totalPages = Math.ceil(data.totalItems / this.maxResults);
           this.books.push(...data.items);
         });
+    },
+    getPage() {
+      this.startIndex = (this.page - 1) * this.maxResults;
+      this.findBooks();
     },
     showBook(volume) {
       this.loadAndSetSelectedBook(volume);
@@ -208,8 +253,15 @@ export default {
           console.error(res);
         });
     },
-    openFav() {
+    showFavourites() {
+      if (this.isMobile) {
+        this.setSelectedBook(null);
+        this.lastBooks = this.books;
+      }
       this.books = this.favourites;
+    },
+    showSearch() {
+      this.books = this.lastBooks;
     },
   },
 };
@@ -299,6 +351,7 @@ export default {
   }
 
   &__search-view {
+    position: relative;
     min-height: 100vh;
     padding: 24px 16px 16px 16px;
     background: url('../assets/images/books.png') center top/cover no-repeat #fff;
@@ -309,6 +362,31 @@ export default {
       width: 46%;
       background: #fff;
     }
+  }
+
+  &__fav {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    padding-left: 20px;
+    background: #F3F3F3;
+  }
+
+  &__back {
+    width: 24px;
+    height: 24px;
+    background: url('../assets/images/back-black.svg') center no-repeat transparent;
+  }
+
+  &__fav-text {
+    padding-left: 12px;
+    font-weight: 500;
+    font-size: 19px;
+    color: #000000;
   }
 
   &__search-panel {
@@ -372,8 +450,8 @@ export default {
     margin-top: 18px;
     @media screen and (min-width: @desktop) {
       position: static;
-      max-height: calc(100vh - 370px);
-      margin-top: 34px;
+      max-height: calc(100vh - 310px);
+      margin: 34px 0 60px;
     }
   }
 
