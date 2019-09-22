@@ -9,6 +9,7 @@
         @focus="onFocus"
         @input="onInput"
         @change="onChange"
+        @keydown="onKeydown"
         class="search-select__input"
       />
     </label>
@@ -151,6 +152,11 @@ export default {
       this.isOpen = true;
       this.validate(value);
       this.$emit('input', value);
+    },
+    onKeydown(e) {
+      if (e.code === 'Enter') {
+        this.$emit('change', e.target.value);
+      }
     },
     select(option) {
       this.closeDropdown();
