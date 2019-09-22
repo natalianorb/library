@@ -154,11 +154,7 @@ export default {
       if (!str) {
         return;
       }
-      if (val !== this.searchString) {
-        this.searchString = str;
-        this.books = [];
-        this.findBooks();
-      }
+      this.findBooks();
     },
     onScroll() {
       if (this.$route.name === 'home' && this.isMobile && (this.books !== this.favourites)) {
@@ -173,7 +169,7 @@ export default {
     suggestQuery(query) {
       const str = (query && query.trim()) || '';
 
-      this.searchString = str;
+      this.searchString = query;
       if (!str) {
         return;
       }
@@ -205,7 +201,9 @@ export default {
         .then((res) => {
           const { data } = res;
           this.totalPages = Math.ceil(data.totalItems / this.maxResults);
-          this.books.push(...data.items);
+          if (this.searchString.includes(this.lastSearchedString)) {
+            this.books.push(...data.items);
+          }
         });
     },
     getPage() {
