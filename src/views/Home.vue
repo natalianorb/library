@@ -312,7 +312,7 @@ export default {
 
   &__container {
     @media screen and (min-width: @laptop) {
-      max-width: 650px;
+      max-width: 1024px;
       margin: 0 auto;
     }
     @media screen and (min-width: @desktop) {
