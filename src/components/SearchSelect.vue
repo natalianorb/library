@@ -139,8 +139,7 @@ export default {
     onClear() {
       this.$emit('input', '');
     },
-    onChange(e) {
-      this.$emit('change', e.target.value);
+    onChange() {
       this.closeDropdown();
     },
     onFocus() {

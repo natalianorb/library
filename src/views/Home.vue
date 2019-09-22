@@ -150,6 +150,7 @@ export default {
       this.findBooks();
     },
     onChange(val) {
+      this.searchString = val;
       const str = (val && val.trim()) || '';
       if (!str) {
         return;
